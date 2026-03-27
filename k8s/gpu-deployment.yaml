@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-api-gpu
+  labels:
+    app: ai-api-gpu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-api-gpu
+  template:
+    metadata:
+      labels:
+        app: ai-api-gpu
+    spec:
+      nodeSelector:
+        accelerator: nvidia
+      tolerations:
+        - key: "gpu"
+          operator: "Exists"
+          effect: "NoSchedule"
+      containers:
+        - name: api
+          image: ai-inference-platform:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: ENABLE_REDIS_CACHE
+              value: "false"
+            - name: INFERENCE_DEVICE
+              value: "cuda"
+          resources:
+            requests:
+              cpu: "1"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "2Gi"
+              nvidia.com/gpu: "1"
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 45
+            periodSeconds: 20
