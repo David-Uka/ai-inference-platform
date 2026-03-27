@@ -22,9 +22,9 @@ data:
   dashboards.yaml: |
     apiVersion: 1
     providers:
-      - name: ai-inference-platform
+      - name: inference-runtime
         orgId: 1
-        folder: AI Platform
+        folder: Inference Runtime
         type: file
         disableDeletion: false
         editable: true
@@ -36,7 +36,7 @@ kind: ConfigMap
 metadata:
   name: grafana-dashboards
 data:
-  ai-inference-platform.json: |
+  inference-runtime.json: |
     {
       "annotations": {
         "list": [
@@ -248,8 +248,8 @@ data:
         "to": "now"
       },
       "timezone": "browser",
-      "title": "AI Inference Platform",
-      "uid": "ai-inference-platform",
+      "title": "Inference Runtime",
+      "uid": "inference-runtime",
       "version": 1
     }
 ---
