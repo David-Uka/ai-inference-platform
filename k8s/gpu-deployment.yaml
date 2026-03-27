@@ -1,18 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ai-api-gpu
+  name: inference-api-gpu
   labels:
-    app: ai-api-gpu
+    app: inference-api-gpu
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ai-api-gpu
+      app: inference-api-gpu
   template:
     metadata:
       labels:
-        app: ai-api-gpu
+        app: inference-api-gpu
     spec:
       nodeSelector:
         accelerator: nvidia
@@ -22,7 +22,7 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: api
-          image: ai-inference-platform:latest
+          image: inference-runtime:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
@@ -64,18 +64,18 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ai-worker-gpu
+  name: inference-worker-gpu
   labels:
-    app: ai-worker-gpu
+    app: inference-worker-gpu
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ai-worker-gpu
+      app: inference-worker-gpu
   template:
     metadata:
       labels:
-        app: ai-worker-gpu
+        app: inference-worker-gpu
     spec:
       nodeSelector:
         accelerator: nvidia
@@ -85,7 +85,7 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: worker
-          image: ai-inference-platform:latest
+          image: inference-runtime:latest
           imagePullPolicy: IfNotPresent
           command: ["python", "worker.py"]
           env:

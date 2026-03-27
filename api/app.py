@@ -30,7 +30,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(
-    title="AI Inference Platform",
+    title="Inference Runtime",
     version="2.0.0",
     description="Versioned sentiment inference API designed for Docker, Kubernetes, and GPU-aware deployments.",
     lifespan=lifespan,

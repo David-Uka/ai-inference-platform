@@ -1,24 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ai-worker
+  name: inference-worker
   labels:
-    app: ai-worker
+    app: inference-worker
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ai-worker
+      app: inference-worker
   template:
     metadata:
       labels:
-        app: ai-worker
+        app: inference-worker
     spec:
       nodeSelector:
         workload: general
       containers:
         - name: worker
-          image: ai-inference-platform:latest
+          image: inference-runtime:latest
           imagePullPolicy: IfNotPresent
           command: ["python", "worker.py"]
           env:

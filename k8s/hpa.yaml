@@ -1,12 +1,12 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: ai-api
+  name: inference-api
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: ai-api
+    name: inference-api
   minReplicas: 1
   maxReplicas: 5
   metrics:

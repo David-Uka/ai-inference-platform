@@ -1,4 +1,4 @@
-# AI Inference Platform
+# Inference Runtime
 
 A containerized inference service with versioned sentiment APIs, async job processing, Kubernetes manifests, GPU-aware deployments, and Prometheus/Grafana monitoring.
 
@@ -118,7 +118,7 @@ Common environment variables:
 Build the image:
 
 ```bash
-docker build -t ai-inference-platform:latest ./api
+docker build -t inference-runtime:latest ./api
 ```
 
 Run the API:
@@ -130,7 +130,7 @@ docker run --rm -p 8000:8000 \
   -e REDIS_URL=redis://host.docker.internal:6379/0 \
   -e ENABLE_ASYNC_QUEUE=true \
   -v "$(pwd)/models:/models" \
-  ai-inference-platform:latest
+  inference-runtime:latest
 ```
 
 Run the worker:
@@ -140,7 +140,7 @@ docker run --rm \
   -e REDIS_URL=redis://host.docker.internal:6379/0 \
   -e ENABLE_ASYNC_QUEUE=true \
   -v "$(pwd)/models:/models" \
-  ai-inference-platform:latest python worker.py
+  inference-runtime:latest python worker.py
 ```
 
 Run with GPU:
@@ -151,7 +151,7 @@ docker run --rm -p 8000:8000 \
   -e INFERENCE_DEVICE=cuda \
   -e REDIS_URL=redis://host.docker.internal:6379/0 \
   -v "$(pwd)/models:/models" \
-  ai-inference-platform:latest
+  inference-runtime:latest
 ```
 
 ## Kubernetes
@@ -169,7 +169,7 @@ kubectl apply -f k8s/hpa.yaml
 Enable Redis response caching in the API:
 
 ```bash
-kubectl set env deployment/ai-api ENABLE_REDIS_CACHE=true REDIS_URL=redis://redis:6379/0
+kubectl set env deployment/inference-api ENABLE_REDIS_CACHE=true REDIS_URL=redis://redis:6379/0
 ```
 
 Deploy monitoring:
