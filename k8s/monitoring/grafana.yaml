@@ -106,8 +106,8 @@ data:
           "id": 2,
           "targets": [
             {
-              "expr": "histogram_quantile(0.95, sum(rate(ai_api_inference_latency_seconds_bucket[5m])) by (le))",
-              "legendFormat": "p95 latency",
+              "expr": "histogram_quantile(0.95, sum(rate(ai_api_inference_latency_seconds_bucket[5m])) by (le, version))",
+              "legendFormat": "{{version}} p95 latency",
               "refId": "A"
             }
           ],
@@ -134,8 +134,8 @@ data:
           "id": 3,
           "targets": [
             {
-              "expr": "sum(rate(ai_api_inference_requests_total{cached=\"true\"}[5m])) / clamp_min(sum(rate(ai_api_inference_requests_total[5m])), 0.0001)",
-              "legendFormat": "cache hit ratio",
+              "expr": "sum(rate(ai_api_inference_requests_total{cached=\"true\"}[5m])) by (version) / clamp_min(sum(rate(ai_api_inference_requests_total[5m])) by (version), 0.0001)",
+              "legendFormat": "{{version}} cache hit ratio",
               "refId": "A"
             }
           ],

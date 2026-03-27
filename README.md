@@ -8,7 +8,8 @@ A portfolio-ready project that ties together container internals, Kubernetes sch
 - Docker image optimization with multi-stage builds and runtime model caching
 - Kubernetes deployments with resource requests, limits, node selectors, and tolerations
 - GPU-aware scheduling with a dedicated deployment that requests `nvidia.com/gpu`
-- Optional Redis response caching for a simple async systems extension
+- Versioned model serving with `/v1` and `/v2` routes
+- Optional Redis response caching and a Redis-backed async worker queue
 - Prometheus and Grafana observability for request rate, latency, cache behavior, and process resource usage
 
 ## Architecture
@@ -16,6 +17,7 @@ A portfolio-ready project that ties together container internals, Kubernetes sch
 ```text
 Client -> FastAPI API -> Hugging Face model pipeline
                     -> Redis cache (optional)
+                    -> Redis job queue -> Worker
                     -> /metrics -> Prometheus -> Grafana
                     -> Docker container
                     -> Kubernetes Deployment / Service / HPA
@@ -27,7 +29,10 @@ Client -> FastAPI API -> Hugging Face model pipeline
 ai-inference-platform/
 ├── api/
 │   ├── app.py
+│   ├── metrics.py
 │   ├── model.py
+│   ├── queue.py
+│   ├── worker.py
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── k8s/
@@ -38,7 +43,8 @@ ai-inference-platform/
 │   │   ├── grafana.yaml
 │   │   └── prometheus.yaml
 │   ├── redis.yaml
-│   └── service.yaml
+│   ├── service.yaml
+│   └── worker-deployment.yaml
 ├── scripts/
 │   └── load_test.sh
 └── README.md
@@ -49,8 +55,12 @@ ai-inference-platform/
 - `GET /healthz`: liveness check
 - `GET /readyz`: readiness check after model warm-up
 - `GET /metadata`: device, model, and cache metadata
+- `GET /versions`: configured model versions and their backing models
 - `GET /metrics`: Prometheus-compatible metrics endpoint
-- `POST /v1/infer`: sentiment inference
+- `POST /v1/infer`: baseline sentiment inference
+- `POST /v2/infer`: alternate sentiment inference
+- `POST /jobs`: enqueue an async inference job
+- `GET /jobs/{job_id}`: poll an async job result
 
 Example request:
 
@@ -58,6 +68,12 @@ Example request:
 curl -X POST http://localhost:8000/v1/infer \
   -H "Content-Type: application/json" \
   -d '{"text":"Kubernetes scheduling is finally starting to click for me."}'
+```
+
+```bash
+curl -X POST http://localhost:8000/v2/infer \
+  -H "Content-Type: application/json" \
+  -d '{"text":"This cluster rollout feels stable and fast."}'
 ```
 
 ## Local Development
@@ -94,6 +110,31 @@ export REDIS_URL=redis://localhost:6379/0
 uvicorn app:app --reload --host 0.0.0.0 --port 8000
 ```
 
+### 4. Run the async worker
+
+The queue flow uses the same Redis instance:
+
+```bash
+cd api
+export ENABLE_ASYNC_QUEUE=true
+export REDIS_URL=redis://localhost:6379/0
+python worker.py
+```
+
+### 5. Submit async jobs
+
+```bash
+curl -X POST http://localhost:8000/jobs \
+  -H "Content-Type: application/json" \
+  -d '{"version":"v2","text":"The GPU-aware deployment finally worked."}'
+```
+
+Then poll the returned `job_id`:
+
+```bash
+curl http://localhost:8000/jobs/<job-id>
+```
+
 Sample metric queries after traffic:
 
 ```bash
@@ -107,6 +148,16 @@ curl -s http://localhost:8000/metrics | grep ai_api_inference_latency_seconds
 
 ```bash
 docker build -t ai-inference-platform:latest ./api
+```
+
+Run the worker from the same image:
+
+```bash
+docker run --rm \
+  -e ENABLE_ASYNC_QUEUE=true \
+  -e REDIS_URL=redis://host.docker.internal:6379/0 \
+  -v "$(pwd)/models:/models" \
+  ai-inference-platform:latest python worker.py
 ```
 
 ### Run with explicit resource limits
@@ -151,17 +202,21 @@ docker stats
 ### Apply the baseline manifests
 
 ```bash
+kubectl apply -f k8s/redis.yaml
 kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/worker-deployment.yaml
 kubectl apply -f k8s/service.yaml
 kubectl apply -f k8s/hpa.yaml
 ```
 
-### Optional cache deployment
+### Redis-backed cache and queue
 
 ```bash
 kubectl apply -f k8s/redis.yaml
 kubectl set env deployment/ai-api ENABLE_REDIS_CACHE=true REDIS_URL=redis://redis:6379/0
 ```
+
+The worker consumes jobs from Redis and writes results back so the API can return `202 Accepted` immediately for long-running requests.
 
 ### Why the scheduler picks a node
 
@@ -254,7 +309,7 @@ Grafana credentials for this demo setup:
 ### Dashboard signals you can talk through
 
 - Request rate: `sum(rate(ai_api_http_requests_total{path="/v1/infer"}[5m]))`
-- P95 latency: `histogram_quantile(0.95, sum(rate(ai_api_inference_latency_seconds_bucket[5m])) by (le))`
+- P95 latency by version: `histogram_quantile(0.95, sum(rate(ai_api_inference_latency_seconds_bucket[5m])) by (le, version))`
 - Cache hit ratio: `sum(rate(ai_api_inference_requests_total{cached="true"}[5m])) / sum(rate(ai_api_inference_requests_total[5m]))`
 - Memory usage: `process_resident_memory_bytes`
 - CPU usage: `rate(process_cpu_seconds_total[5m])`
@@ -282,6 +337,8 @@ Apply it with:
 kubectl apply -f k8s/gpu-deployment.yaml
 ```
 
+That file also includes `ai-worker-gpu`, which requests a GPU for background jobs the same way the API deployment does.
+
 ### How Kubernetes knows which node has a GPU
 
 1. The NVIDIA device plugin runs on GPU-capable nodes.
@@ -302,9 +359,6 @@ kubectl get nodes -o json | jq '.items[].status.allocatable'
 - "I can explain the difference between Kubernetes resource requests and limits, and why scheduling decisions are based on requests."
 - "I understand why GPU pods remain pending when the device plugin is missing or nodes do not advertise `nvidia.com/gpu`."
 - "I designed the image so model weights are pulled into a mounted cache at runtime rather than inflating the image layer set."
+- "I exposed two model versions behind separate API routes so I can compare behavior and evolve the service without breaking clients."
+- "I added a Redis-backed worker queue so the API can accept asynchronous inference jobs and hand them off to background workers."
 - "I instrumented the API with Prometheus metrics and built dashboards for request rate, p95 latency, cache hit ratio, CPU, and memory."
-
-## Next Upgrades
-
-- Add model versioning with `/v1` and `/v2` routes
-- Add a worker queue for asynchronous inference jobs

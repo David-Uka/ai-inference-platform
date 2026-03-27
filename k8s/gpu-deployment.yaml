@@ -30,8 +30,16 @@ spec:
           env:
             - name: ENABLE_REDIS_CACHE
               value: "false"
+            - name: ENABLE_ASYNC_QUEUE
+              value: "true"
             - name: INFERENCE_DEVICE
               value: "cuda"
+            - name: REDIS_URL
+              value: "redis://redis:6379/0"
+            - name: MODEL_V1_NAME
+              value: "distilbert-base-uncased-finetuned-sst-2-english"
+            - name: MODEL_V2_NAME
+              value: "cardiffnlp/twitter-roberta-base-sentiment-latest"
           resources:
             requests:
               cpu: "1"
@@ -52,3 +60,52 @@ spec:
               port: http
             initialDelaySeconds: 45
             periodSeconds: 20
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-worker-gpu
+  labels:
+    app: ai-worker-gpu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-worker-gpu
+  template:
+    metadata:
+      labels:
+        app: ai-worker-gpu
+    spec:
+      nodeSelector:
+        accelerator: nvidia
+      tolerations:
+        - key: "gpu"
+          operator: "Exists"
+          effect: "NoSchedule"
+      containers:
+        - name: worker
+          image: ai-inference-platform:latest
+          imagePullPolicy: IfNotPresent
+          command: ["python", "worker.py"]
+          env:
+            - name: ENABLE_REDIS_CACHE
+              value: "false"
+            - name: ENABLE_ASYNC_QUEUE
+              value: "true"
+            - name: INFERENCE_DEVICE
+              value: "cuda"
+            - name: REDIS_URL
+              value: "redis://redis:6379/0"
+            - name: MODEL_V1_NAME
+              value: "distilbert-base-uncased-finetuned-sst-2-english"
+            - name: MODEL_V2_NAME
+              value: "cardiffnlp/twitter-roberta-base-sentiment-latest"
+          resources:
+            requests:
+              cpu: "1"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "2Gi"
+              nvidia.com/gpu: "1"

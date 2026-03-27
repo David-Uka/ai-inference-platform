@@ -35,7 +35,7 @@ RUN addgroup --system appgroup \
     && chown -R appuser:appgroup /app /models
 
 COPY --from=builder /opt/venv /opt/venv
-COPY app.py model.py ./
+COPY app.py metrics.py model.py queue.py worker.py ./
 
 USER appuser
 

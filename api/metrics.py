@@ -21,13 +21,13 @@ HTTP_REQUEST_DURATION_SECONDS = Histogram(
 INFERENCE_REQUESTS_TOTAL = Counter(
     "ai_api_inference_requests_total",
     "Total inference requests served.",
-    ["cached", "device", "label"],
+    ["version", "cached", "device", "label"],
 )
 
 INFERENCE_LATENCY_SECONDS = Histogram(
     "ai_api_inference_latency_seconds",
     "Model inference latency in seconds.",
-    ["device", "cached"],
+    ["version", "device", "cached"],
     buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30),
 )
 
