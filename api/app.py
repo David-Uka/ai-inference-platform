@@ -14,7 +14,7 @@ from metrics import (
     setup_metrics,
 )
 from model import ModelRegistry, get_registry
-from queue import get_queue
+from job_queue import get_queue
 
 
 @asynccontextmanager

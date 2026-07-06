@@ -2,7 +2,7 @@ import logging
 import time
 
 from model import get_registry
-from queue import get_queue
+from job_queue import get_queue
 
 
 logging.basicConfig(
