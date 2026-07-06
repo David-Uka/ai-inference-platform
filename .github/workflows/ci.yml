@@ -33,6 +33,13 @@ jobs:
       - name: Compile Python sources
         run: python -m py_compile api/app.py api/metrics.py api/model.py api/job_queue.py api/worker.py
 
+      - name: Install test dependencies
+        run: |
+          python -m pip install pytest fastapi httpx prometheus-client
+
+      - name: Run API smoke tests
+        run: python -m pytest api/tests -v
+
       - name: Validate Kubernetes YAML
         run: |
           python - <<'PY'

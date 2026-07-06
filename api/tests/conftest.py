@@ -9,6 +9,7 @@ This is a smoke suite, not a model-accuracy or infra-integration suite.
 """
 import pathlib
 import sys
+import time
 import types
 
 API_DIR = pathlib.Path(__file__).resolve().parents[1]
@@ -17,8 +18,6 @@ if str(API_DIR) not in sys.path:
 
 
 def _install_torch_stub() -> None:
-    if "torch" in sys.modules:
-        return
     stub = types.ModuleType("torch")
 
     class _Cuda:
@@ -31,8 +30,6 @@ def _install_torch_stub() -> None:
 
 
 def _install_transformers_stub() -> None:
-    if "transformers" in sys.modules:
-        return
     stub = types.ModuleType("transformers")
 
     def _fake_pipeline(task_name, model=None, device=None):
@@ -47,8 +44,6 @@ def _install_transformers_stub() -> None:
 
 
 def _install_redis_stub() -> None:
-    if "redis" in sys.modules:
-        return
     stub = types.ModuleType("redis")
 
     class FakeRedis:
@@ -71,6 +66,11 @@ def _install_redis_stub() -> None:
         def brpoplpush(self, src, dst, timeout=0):
             lst = self._lists.get(src, [])
             if not lst:
+                # Real redis blocks up to `timeout` seconds here; mimic that
+                # instead of returning instantly, so a future test driving
+                # worker.py's `while True: reserve()` loop can't busy-spin.
+                if timeout > 0:
+                    time.sleep(timeout)
                 return None
             value = lst.pop()
             self._lists.setdefault(dst, []).insert(0, value)
