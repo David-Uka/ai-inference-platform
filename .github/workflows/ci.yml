@@ -31,7 +31,7 @@ jobs:
           python -m pip install pyyaml
 
       - name: Compile Python sources
-        run: python -m py_compile api/app.py api/metrics.py api/model.py api/queue.py api/worker.py
+        run: python -m py_compile api/app.py api/metrics.py api/model.py api/job_queue.py api/worker.py
 
       - name: Validate Kubernetes YAML
         run: |
