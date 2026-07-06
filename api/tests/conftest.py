@@ -68,8 +68,11 @@ def _install_redis_stub() -> None:
             if not lst:
                 # Real redis blocks up to `timeout` seconds here; mimic that
                 # instead of returning instantly, so a future test driving
-                # worker.py's `while True: reserve()` loop can't busy-spin.
+        def brpoplpush(self, src, dst, timeout=0):
+            lst = self._lists.get(src, [])
+            if not lst:
                 if timeout > 0:
+                    import time
                     time.sleep(timeout)
                 return None
             value = lst.pop()
